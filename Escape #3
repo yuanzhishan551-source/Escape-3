@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>三扇门</title>
+    <title>Three Doors</title>
     <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
     <style>
         * {
@@ -381,8 +381,8 @@
     <div class="noise"></div>
     <div class="vignette"></div>
 
-    <!-- 眼动追踪UI -->
-    <div class="eye-tracking-info" id="eyeTrackingInfo">眼动追踪: 初始化中...</div>
+    <!-- Eye Tracking UI -->
+    <div class="eye-tracking-info" id="eyeTrackingInfo">Eye Tracking: Initializing...</div>
     <div class="gaze-cursor" id="gazeCursor">
         <div class="gaze-progress">
             <svg viewBox="0 0 40 40">
@@ -417,11 +417,11 @@
         let currentGazedDoor = null;
         const GAZE_DURATION = 3000; // 3秒
 
-        // 初始化游戏
+        // Initialize game
         function initGame() {
             const safeIndex = Math.floor(Math.random() * 3);
             doorContents = [0, 1, 2].map(i => i === safeIndex ? 'safe' : 'danger');
-            console.log('游戏初始化，安全门索引:', safeIndex);
+            console.log('Game initialized, safe door index:', safeIndex);
         }
         initGame();
 
@@ -491,62 +491,62 @@
             )`;
         }
 
-        // 处理停留在门上的逻辑
+        // Handle door gazing logic
         function handleDoorGaze(x, y) {
             const doorIndex = getDoorAtPosition(x, y);
 
             if (doorIndex !== null && doorStates[doorIndex] !== 'open') {
-                // 光标在门上
+                // Cursor is on door
                 if (currentGazedDoor !== doorIndex) {
-                    // 切换到新的门，重置计时
+                    // Switch to new door, reset timer
                     resetGazeProgress();
                     currentGazedDoor = doorIndex;
                     gazeStartTime = Date.now();
-                    console.log('开始注视门:', doorIndex + 1);
+                    console.log('Started gazing at door:', doorIndex + 1);
                 } else {
-                    // 继续注视同一扇门
+                    // Continue gazing at same door
                     const elapsed = Date.now() - gazeStartTime;
                     const progress = Math.min(elapsed / GAZE_DURATION, 1);
                     updateGazeProgress(progress);
 
                     if (elapsed >= GAZE_DURATION) {
-                        // 停留满3秒，触发门的打开
+                        // 3 seconds complete, trigger door
                         resetGazeProgress();
                         triggerDoor(doorIndex);
                     }
                 }
             } else {
-                // 光标不在门上，重置
+                // Cursor not on door, reset
                 if (currentGazedDoor !== null) {
-                    console.log('离开门');
+                    console.log('Left door');
                     resetGazeProgress();
                 }
             }
         }
 
-        // 触发门的打开/进入逻辑
+        // Trigger door opening/entering logic
         function triggerDoor(doorIndex) {
             const door = doors[doorIndex];
 
             if (doorStates[doorIndex] === 'closed') {
-                // 第一次触发：门半开，显示门后的内容
+                // First trigger: door half-open, show content behind door
                 doorStates[doorIndex] = 'half-open';
-                console.log('门半开，内容:', doorContents[doorIndex]);
+                console.log('Door half-open, content:', doorContents[doorIndex]);
 
                 door.style.transform = 'rotateY(-45deg)';
                 door.style.transformOrigin = 'left center';
                 door.style.transition = 'all 0.5s ease-out';
 
-                // 根据门后内容显示不同效果
+                // Show different effects based on door content
                 if (doorContents[doorIndex] === 'danger') {
-                    // 危险门：显示恐怖的眼睛
+                    // Danger door: show scary eye
                     showEye(door);
                 } else {
-                    // 安全门：显示黑暗空洞（什么都没有）
+                    // Safe door: show dark void (nothing)
                     showDarkness(door);
                 }
 
-                // 添加提示文字
+                // Add hint text
                 const hint = document.createElement('div');
                 hint.style.cssText = `
                     position: fixed;
@@ -561,36 +561,36 @@
                     z-index: 1000;
                     animation: fadeIn 0.3s ease-out;
                 `;
-                hint.textContent = '继续注视门可进入';
+                hint.textContent = 'Keep gazing to enter';
                 hint.id = 'doorHint';
 
-                // 移除旧提示
+                // Remove old hint
                 const oldHint = document.getElementById('doorHint');
                 if (oldHint) oldHint.remove();
 
                 document.body.appendChild(hint);
 
             } else if (doorStates[doorIndex] === 'half-open') {
-                // 第二次触发：进入门后
+                // Second trigger: enter door
                 doorStates[doorIndex] = 'open';
-                console.log('进入门，内容:', doorContents[doorIndex]);
+                console.log('Entering door, content:', doorContents[doorIndex]);
 
-                // 移除提示
+                // Remove hint
                 const hint = document.getElementById('doorHint');
                 if (hint) hint.remove();
 
-                // 门完全打开并放大
+                // Door fully opens and scales
                 door.style.transform = 'scale(2) rotateY(-90deg)';
                 door.style.opacity = '0';
                 door.style.transition = 'all 0.8s ease-out';
 
-                // 根据门后内容决定结局
+                // Decide ending based on door content
                 setTimeout(() => {
                     if (doorContents[doorIndex] === 'safe') {
-                        // 安全门：通关
+                        // Safe door: victory
                         showVictory();
                     } else {
-                        // 危险门：被怪物吃掉，游戏结束
+                        // Danger door: eaten by monster, game over
                         showGameOver();
                     }
                 }, 800);
@@ -771,7 +771,7 @@
             doorElement.appendChild(darknessContainer);
         }
 
-        // 胜利画面
+        // Victory screen
         function showVictory() {
             const screen = document.createElement('div');
             screen.style.cssText = `
@@ -788,8 +788,8 @@
                 z-index: 10000;
             `;
             screen.innerHTML = `
-                <div style="color: #4ade80; font-size: 72px; font-weight: bold;">通关！</div>
-                <div style="color: #fff; font-size: 24px; margin-top: 20px;">你选择了正确的门</div>
+                <div style="color: #4ade80; font-size: 72px; font-weight: bold;">VICTORY!</div>
+                <div style="color: #fff; font-size: 24px; margin-top: 20px;">You chose the right door</div>
                 <button onclick="location.reload()" style="
                     margin-top: 40px;
                     padding: 15px 40px;
@@ -800,12 +800,12 @@
                     border-radius: 10px;
                     cursor: pointer;
                     font-weight: bold;
-                ">重新开始</button>
+                ">Restart</button>
             `;
             document.body.appendChild(screen);
         }
         
-        // 游戏结束画面
+        // Game over screen
         function showGameOver() {
             const screen = document.createElement('div');
             screen.style.cssText = `
@@ -823,7 +823,7 @@
             `;
             screen.innerHTML = `
                 <div style="color: #ff0000; font-size: 72px; font-weight: bold;">GAME OVER</div>
-                <div style="color: #fff; font-size: 24px; margin-top: 20px;">你被门后的怪物吃掉了</div>
+                <div style="color: #fff; font-size: 24px; margin-top: 20px;">You were eaten by the monster behind the door</div>
                 <button onclick="location.reload()" style="
                     margin-top: 40px;
                     padding: 15px 40px;
@@ -834,7 +834,7 @@
                     border-radius: 10px;
                     cursor: pointer;
                     font-weight: bold;
-                ">重新开始</button>
+                ">Restart</button>
             `;
             document.body.appendChild(screen);
         }
@@ -862,11 +862,11 @@
             }
         });
 
-        // 初始化眼动追踪
+        // Initialize eye tracking
         async function initEyeTracking() {
             try {
-                eyeTrackingInfo.textContent = '眼动追踪: 正在请求摄像头权限...';
-                
+                eyeTrackingInfo.textContent = 'Eye Tracking: Requesting camera permission...';
+
                 await webgazer.setGazeListener((data, timestamp) => {
                     if (data == null) return;
 
@@ -900,20 +900,20 @@
                 // 保存校准数据，提升长期使用体验
                 webgazer.params.saveDataAcrossSessions = true;
 
-                // 增加采样频率，提升响应速度
+                // Increase sampling frequency for better responsiveness
                 webgazer.params.videoViewerWidth = 320;
                 webgazer.params.videoViewerHeight = 240;
 
-                // 初始化完成提示
+                // Initialization complete message
                 setTimeout(() => {
-                    eyeTrackingInfo.textContent = '眼动追踪: 已启用 ✓';
+                    eyeTrackingInfo.textContent = 'Eye Tracking: Enabled ✓';
                     eyeTrackingInfo.classList.add('ready');
                     gazeCursor.classList.add('active');
                 }, 3000);
-                
+
             } catch (error) {
-                console.error('眼动追踪初始化失败:', error);
-                eyeTrackingInfo.textContent = '眼动追踪: 初始化失败';
+                console.error('Eye tracking initialization failed:', error);
+                eyeTrackingInfo.textContent = 'Eye Tracking: Failed to initialize';
                 useMouseFallback = true;
                 gazeCursor.classList.remove('active');
             }
