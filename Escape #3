@@ -122,21 +122,21 @@
             transform: translateZ(500px);
         }
 
-        /* 门容器 - 独立于3D场景，使用固定定位确保可点击 */
+        /* 门容器 */
         .doors-container {
-            position: fixed;
-            bottom: 50px;
-            left: 50%;
-            transform: translateX(-50%);
+            position: absolute;
+            width: 100%;
+            height: 100%;
             display: flex;
             justify-content: center;
             align-items: flex-end;
             gap: 120px;
+            transform: translateZ(2px);
+            padding-bottom: 0px;
             z-index: 100;
-            pointer-events: none;
         }
 
-        /* 门 - z-index 低于遮罩层 */
+        /* 门 */
         .door {
             width: 220px;
             height: 400px;
@@ -145,14 +145,13 @@
             box-shadow:
                 0 5px 15px rgba(0,0,0,0.3),
                 inset 0 2px 10px rgba(0,0,0,0.4);
-            cursor: pointer !important;
+            cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
             border-radius: 2px;
             transform-style: preserve-3d;
             transform-origin: left center;
-            z-index: 101;
-            pointer-events: auto !important;
+            z-index: 1;
         }
 
         /* 门把手 */
@@ -324,6 +323,13 @@
         <div class="room-box">
             <!-- 房间的六个面 -->
             <div class="room-face back">
+                <!-- 三扇门 - 放回3D场景中 -->
+                <div class="doors-container">
+                    <div class="door" data-door="1"></div>
+                    <div class="door" data-door="2"></div>
+                    <div class="door" data-door="3"></div>
+                </div>
+
                 <!-- 环境光 -->
                 <div class="ambient-light"></div>
             </div>
@@ -333,13 +339,6 @@
             <div class="room-face right"></div>
             <div class="room-face front"></div>
         </div>
-    </div>
-
-    <!-- 三扇门 - 独立于3D场景之外，确保可点击 -->
-    <div class="doors-container">
-        <div class="door" data-door="1"></div>
-        <div class="door" data-door="2"></div>
-        <div class="door" data-door="3"></div>
     </div>
     
     <!-- 特效 -->
