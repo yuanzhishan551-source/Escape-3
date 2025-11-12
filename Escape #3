@@ -132,11 +132,11 @@
             justify-content: center;
             align-items: flex-end;
             gap: 120px;
-            z-index: 1000;
+            z-index: 100;
             pointer-events: none;
         }
 
-        /* 门 - z-index 确保在遮罩层之上 */
+        /* 门 - z-index 低于遮罩层 */
         .door {
             width: 220px;
             height: 400px;
@@ -151,7 +151,7 @@
             border-radius: 2px;
             transform-style: preserve-3d;
             transform-origin: left center;
-            z-index: 1001;
+            z-index: 101;
             pointer-events: auto !important;
         }
 
@@ -424,7 +424,6 @@
             door.addEventListener('click', function(e) {
                 e.stopPropagation();
                 console.log('✅ 门被点击！门号:', index + 1);
-                alert('门 ' + (index + 1) + ' 被点击了！');
 
                 const doorIndex = parseInt(this.getAttribute('data-door')) - 1;
 
