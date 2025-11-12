@@ -16,6 +16,19 @@
             overflow: hidden;
             font-family: Arial, sans-serif;
             background: #000;
+            /* 使用 mask 实现视野限制，不影响点击 */
+            -webkit-mask-image: radial-gradient(circle 150px at 50% 50%,
+                rgba(0, 0, 0, 1) 0%,
+                rgba(0, 0, 0, 0.8) 30%,
+                rgba(0, 0, 0, 0.2) 70%,
+                rgba(0, 0, 0, 0.05) 100%);
+            mask-image: radial-gradient(circle 150px at 50% 50%,
+                rgba(0, 0, 0, 1) 0%,
+                rgba(0, 0, 0, 0.8) 30%,
+                rgba(0, 0, 0, 0.2) 70%,
+                rgba(0, 0, 0, 0.05) 100%);
+            transition: -webkit-mask-position 0.1s ease-out;
+            transition: mask-position 0.1s ease-out;
         }
 
         .scene {
@@ -300,27 +313,7 @@
             box-shadow: 0 0 5px rgba(196, 180, 84, 0.8);
         }
 
-        /* 黑幕遮罩 */
-        .darkness-overlay {
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            pointer-events: none !important;
-            z-index: 98;
-            background: radial-gradient(
-                circle 150px at 50% 50%,
-                transparent 0%,
-                rgba(0, 0, 0, 0.2) 30%,
-                rgba(0, 0, 0, 0.8) 70%,
-                rgba(0, 0, 0, 0.95) 100%
-            );
-            opacity: 0;
-            transition: opacity 0.5s;
-        }
-
-        .darkness-overlay.active {
-            opacity: 1;
-        }
+        /* 黑幕效果已改用 body 的 mask-image 实现，不再需要单独的遮罩层 */
     </style>
 </head>
 <body>
@@ -353,7 +346,6 @@
     <!-- 眼动追踪UI -->
     <div class="eye-tracking-info" id="eyeTrackingInfo">眼动追踪: 初始化中...</div>
     <div class="gaze-cursor" id="gazeCursor"></div>
-    <div class="darkness-overlay" id="darknessOverlay"></div>
 
     <script>
         // 获取元素
@@ -361,7 +353,6 @@
         const roomBox = document.querySelector('.room-box');
         const eyeTrackingInfo = document.getElementById('eyeTrackingInfo');
         const gazeCursor = document.getElementById('gazeCursor');
-        const darknessOverlay = document.getElementById('darknessOverlay');
         
         // 游戏状态
         let doorStates = ['closed', 'closed', 'closed'];
@@ -403,17 +394,15 @@
             };
         }
         
-        // 更新黑幕位置
-        function updateDarknessOverlay(x, y) {
+        // 更新视野遮罩位置（使用 CSS mask-image）
+        function updateViewMask(x, y) {
             const xPercent = (x / window.innerWidth) * 100;
             const yPercent = (y / window.innerHeight) * 100;
-            darknessOverlay.style.background = `radial-gradient(
-                circle 150px at ${xPercent}% ${yPercent}%,
-                transparent 0%,
-                rgba(0, 0, 0, 0.2) 30%,
-                rgba(0, 0, 0, 0.8) 70%,
-                rgba(0, 0, 0, 0.95) 100%
-            )`;
+
+            // 更新 body 的 mask-image 位置
+            const maskGradient = `radial-gradient(circle 150px at ${xPercent}% ${yPercent}%, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.2) 70%, rgba(0, 0, 0, 0.05) 100%)`;
+            document.body.style.webkitMaskImage = maskGradient;
+            document.body.style.maskImage = maskGradient;
         }
 
         // 门的点击事件
@@ -750,6 +739,13 @@
             if (useMouseFallback) {
                 targetX = (e.clientX / window.innerWidth - 0.5) * 15;
                 targetY = -10 + (e.clientY / window.innerHeight - 0.5) * 10;
+
+                // 更新视野遮罩位置（鼠标模式）
+                updateViewMask(e.clientX, e.clientY);
+
+                // 同步更新眼动光标位置
+                gazeCursor.style.left = e.clientX + 'px';
+                gazeCursor.style.top = e.clientY + 'px';
             }
         });
 
@@ -767,8 +763,8 @@
                     
                     gazeCursor.style.left = gazeX + 'px';
                     gazeCursor.style.top = gazeY + 'px';
-                    
-                    updateDarknessOverlay(gazeX, gazeY);
+
+                    updateViewMask(gazeX, gazeY);
                     
                     targetX = (gazeX / window.innerWidth - 0.5) * 15;
                     targetY = -10 + (gazeY / window.innerHeight - 0.5) * 10;
@@ -788,7 +784,7 @@
                     eyeTrackingInfo.textContent = '眼动追踪: 已启用 ✓';
                     eyeTrackingInfo.classList.add('ready');
                     gazeCursor.classList.add('active');
-                    darknessOverlay.classList.add('active');
+                    // 视野遮罩通过 CSS mask-image 自动生效
                 }, 3000);
                 
             } catch (error) {
@@ -808,10 +804,12 @@
         }
         
         animate();
-        
-        // 立即显示黑幕
-        darknessOverlay.classList.add('active');
-        updateDarknessOverlay(window.innerWidth / 2, window.innerHeight / 2);
+
+        // 初始化视野遮罩（居中）
+        updateViewMask(window.innerWidth / 2, window.innerHeight / 2);
+
+        // 在鼠标模式下也显示光标
+        gazeCursor.classList.add('active');
         
         // 初始化眼动追踪
         window.addEventListener('load', () => {
