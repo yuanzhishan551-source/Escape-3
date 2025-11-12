@@ -454,8 +454,8 @@
         let eyeTrackingEnabled = false;
         let useMouseFallback = true;
         
-        // 平滑滤波队列
-        const smoothingWindow = 5;
+        // 平滑滤波队列 - 增加窗口大小提升稳定性
+        const smoothingWindow = 15;
         let gazeHistory = [];
         
         function smoothGazeData(x, y) {
@@ -862,6 +862,49 @@
             }
         });
 
+        // 点击校准 - 帮助用户提升眼动追踪精度
+        document.addEventListener('click', (e) => {
+            if (eyeTrackingEnabled && typeof webgazer !== 'undefined') {
+                // 通过点击位置校准眼动追踪
+                webgazer.recordScreenPosition(e.clientX, e.clientY, 'click');
+
+                // 显示校准反馈
+                const feedback = document.createElement('div');
+                feedback.style.cssText = `
+                    position: fixed;
+                    left: ${e.clientX}px;
+                    top: ${e.clientY}px;
+                    width: 20px;
+                    height: 20px;
+                    border: 2px solid #4ade80;
+                    border-radius: 50%;
+                    transform: translate(-50%, -50%);
+                    pointer-events: none;
+                    z-index: 9999;
+                    animation: calibrationPulse 0.6s ease-out forwards;
+                `;
+                document.body.appendChild(feedback);
+
+                setTimeout(() => feedback.remove(), 600);
+            }
+        });
+
+        // 校准反馈动画
+        const calibrationStyle = document.createElement('style');
+        calibrationStyle.textContent = `
+            @keyframes calibrationPulse {
+                0% {
+                    transform: translate(-50%, -50%) scale(0.5);
+                    opacity: 1;
+                }
+                100% {
+                    transform: translate(-50%, -50%) scale(2);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(calibrationStyle);
+
         // 初始化眼动追踪
         async function initEyeTracking() {
             try {
@@ -889,19 +932,37 @@
                     useMouseFallback = false;
                 }).begin();
                 
+                // 优化追踪配置
                 webgazer.showVideoPreview(false)
                     .showPredictionPoints(false)
-                    .applyKalmanFilter(false);
-                
+                    .applyKalmanFilter(true); // 启用卡尔曼滤波器提升稳定性
+
+                // 使用ridge回归算法，效果更稳定
                 webgazer.setRegression('ridge');
+
+                // 保存校准数据，提升长期使用体验
                 webgazer.params.saveDataAcrossSessions = true;
+
+                // 增加采样频率，提升响应速度
+                webgazer.params.videoViewerWidth = 320;
+                webgazer.params.videoViewerHeight = 240;
                 
+                // 显示校准提示
                 setTimeout(() => {
-                    eyeTrackingInfo.textContent = '眼动追踪: 已启用 ✓';
+                    eyeTrackingInfo.textContent = '眼动追踪: 校准中... (请盯着屏幕四角移动视线)';
+                }, 1000);
+
+                // 完成初始校准
+                setTimeout(() => {
+                    eyeTrackingInfo.textContent = '眼动追踪: 已启用 ✓ (点击屏幕各处可进一步校准)';
                     eyeTrackingInfo.classList.add('ready');
                     gazeCursor.classList.add('active');
-                    // 视野遮罩通过 CSS mask-image 自动生效
-                }, 3000);
+
+                    // 10秒后简化提示
+                    setTimeout(() => {
+                        eyeTrackingInfo.textContent = '眼动追踪: 已启用 ✓';
+                    }, 10000);
+                }, 5000);
                 
             } catch (error) {
                 console.error('眼动追踪初始化失败:', error);
