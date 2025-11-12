@@ -269,25 +269,36 @@
         /* 眼动追踪光标 */
         .gaze-cursor {
             position: fixed;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #c4b454;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             pointer-events: none;
             z-index: 10000;
             transform: translate(-50%, -50%);
             transition: opacity 0.3s;
             opacity: 0;
-            box-shadow: 
-                0 0 10px rgba(196, 180, 84, 0.5),
-                inset 0 0 5px rgba(196, 180, 84, 0.3);
         }
 
         .gaze-cursor.active {
             opacity: 1;
         }
 
+        /* 光标外圈 */
         .gaze-cursor::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border: 2px solid #c4b454;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(196, 180, 84, 0.5);
+        }
+
+        /* 光标中心点 */
+        .gaze-cursor::after {
             content: '';
             position: absolute;
             top: 50%;
@@ -298,6 +309,31 @@
             background: #c4b454;
             border-radius: 50%;
             box-shadow: 0 0 5px rgba(196, 180, 84, 0.8);
+        }
+
+        /* 停留进度环 */
+        .gaze-progress {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+        }
+
+        .gaze-progress svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .gaze-progress circle {
+            fill: none;
+            stroke: #4ade80;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.1s linear;
         }
 
         /* 视野遮罩 - z-index 比门低 */
@@ -347,7 +383,13 @@
 
     <!-- 眼动追踪UI -->
     <div class="eye-tracking-info" id="eyeTrackingInfo">眼动追踪: 初始化中...</div>
-    <div class="gaze-cursor" id="gazeCursor"></div>
+    <div class="gaze-cursor" id="gazeCursor">
+        <div class="gaze-progress">
+            <svg viewBox="0 0 40 40">
+                <circle cx="20" cy="20" r="17" id="progressCircle"></circle>
+            </svg>
+        </div>
+    </div>
 
     <!-- 视野遮罩层 - z-index 比门低 -->
     <div class="darkness-overlay" id="darknessOverlay"></div>
@@ -359,11 +401,22 @@
         const eyeTrackingInfo = document.getElementById('eyeTrackingInfo');
         const gazeCursor = document.getElementById('gazeCursor');
         const darknessOverlay = document.getElementById('darknessOverlay');
+        const progressCircle = document.getElementById('progressCircle');
+
+        // 设置进度环的初始状态
+        const circumference = 2 * Math.PI * 17;
+        progressCircle.style.strokeDasharray = circumference;
+        progressCircle.style.strokeDashoffset = circumference;
         
         // 游戏状态
         let doorStates = ['closed', 'closed', 'closed'];
         let doorContents = [];
-        
+
+        // 停留检测状态
+        let gazeStartTime = null;
+        let currentGazedDoor = null;
+        const GAZE_DURATION = 3000; // 3秒
+
         // 初始化游戏
         function initGame() {
             const safeIndex = Math.floor(Math.random() * 3);
@@ -371,6 +424,31 @@
             console.log('游戏初始化，安全门索引:', safeIndex);
         }
         initGame();
+
+        // 检测光标是否在门上
+        function getDoorAtPosition(x, y) {
+            for (let i = 0; i < doors.length; i++) {
+                const door = doors[i];
+                const rect = door.getBoundingClientRect();
+                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                    return i;
+                }
+            }
+            return null;
+        }
+
+        // 更新停留进度
+        function updateGazeProgress(progress) {
+            const offset = circumference - (progress * circumference);
+            progressCircle.style.strokeDashoffset = offset;
+        }
+
+        // 重置停留进度
+        function resetGazeProgress() {
+            progressCircle.style.strokeDashoffset = circumference;
+            gazeStartTime = null;
+            currentGazedDoor = null;
+        }
         
         // 眼动追踪状态
         let eyeTrackingEnabled = false;
@@ -413,92 +491,111 @@
             )`;
         }
 
-        // 添加全局点击监听来调试
-        document.addEventListener('click', (e) => {
-            console.log('页面被点击:', e.target.className, e.target.tagName);
-        });
+        // 处理停留在门上的逻辑
+        function handleDoorGaze(x, y) {
+            const doorIndex = getDoorAtPosition(x, y);
 
-        // 门的点击事件
-        doors.forEach((door, index) => {
-            door.addEventListener('click', function(e) {
-                e.stopPropagation();
-                console.log('✅ 门被点击！门号:', index + 1);
+            if (doorIndex !== null && doorStates[doorIndex] !== 'open') {
+                // 光标在门上
+                if (currentGazedDoor !== doorIndex) {
+                    // 切换到新的门，重置计时
+                    resetGazeProgress();
+                    currentGazedDoor = doorIndex;
+                    gazeStartTime = Date.now();
+                    console.log('开始注视门:', doorIndex + 1);
+                } else {
+                    // 继续注视同一扇门
+                    const elapsed = Date.now() - gazeStartTime;
+                    const progress = Math.min(elapsed / GAZE_DURATION, 1);
+                    updateGazeProgress(progress);
 
-                const doorIndex = parseInt(this.getAttribute('data-door')) - 1;
-
-                if (doorStates[doorIndex] === 'closed') {
-                    // 第一次点击：门半开，显示门后的内容
-                    doorStates[doorIndex] = 'half-open';
-                    console.log('门半开，内容:', doorContents[doorIndex]);
-
-                    this.style.transform = 'rotateY(-45deg)';
-                    this.style.transformOrigin = 'left center';
-                    this.style.transition = 'all 0.5s ease-out';
-
-                    // 根据门后内容显示不同效果
-                    if (doorContents[doorIndex] === 'danger') {
-                        // 危险门：显示恐怖的眼睛
-                        showEye(this);
-                    } else {
-                        // 安全门：显示黑暗空洞（什么都没有）
-                        showDarkness(this);
+                    if (elapsed >= GAZE_DURATION) {
+                        // 停留满3秒，触发门的打开
+                        resetGazeProgress();
+                        triggerDoor(doorIndex);
                     }
-
-                    // 添加提示文字
-                    const hint = document.createElement('div');
-                    hint.style.cssText = `
-                        position: fixed;
-                        bottom: 30px;
-                        left: 50%;
-                        transform: translateX(-50%);
-                        color: #c4b454;
-                        font-size: 18px;
-                        background: rgba(0,0,0,0.8);
-                        padding: 10px 20px;
-                        border-radius: 5px;
-                        z-index: 1000;
-                        animation: fadeIn 0.3s ease-out;
-                    `;
-                    hint.textContent = '再次点击门进入';
-                    hint.id = 'doorHint';
-
-                    // 移除旧提示
-                    const oldHint = document.getElementById('doorHint');
-                    if (oldHint) oldHint.remove();
-
-                    document.body.appendChild(hint);
-
-                } else if (doorStates[doorIndex] === 'half-open') {
-                    // 第二次点击：进入门后
-                    doorStates[doorIndex] = 'open';
-                    console.log('进入门，内容:', doorContents[doorIndex]);
-
-                    // 移除提示
-                    const hint = document.getElementById('doorHint');
-                    if (hint) hint.remove();
-
-                    // 门完全打开并放大
-                    this.style.transform = 'scale(2) rotateY(-90deg)';
-                    this.style.opacity = '0';
-                    this.style.transition = 'all 0.8s ease-out';
-
-                    // 根据门后内容决定结局
-                    setTimeout(() => {
-                        if (doorContents[doorIndex] === 'safe') {
-                            // 安全门：通关
-                            showVictory();
-                        } else {
-                            // 危险门：被怪物吃掉，游戏结束
-                            showGameOver();
-                        }
-                    }, 800);
                 }
-            }, true);
+            } else {
+                // 光标不在门上，重置
+                if (currentGazedDoor !== null) {
+                    console.log('离开门');
+                    resetGazeProgress();
+                }
+            }
+        }
 
-            door.addEventListener('mouseenter', function() {
-                console.log('鼠标进入门:', index + 1);
-            });
-        });
+        // 触发门的打开/进入逻辑
+        function triggerDoor(doorIndex) {
+            const door = doors[doorIndex];
+
+            if (doorStates[doorIndex] === 'closed') {
+                // 第一次触发：门半开，显示门后的内容
+                doorStates[doorIndex] = 'half-open';
+                console.log('门半开，内容:', doorContents[doorIndex]);
+
+                door.style.transform = 'rotateY(-45deg)';
+                door.style.transformOrigin = 'left center';
+                door.style.transition = 'all 0.5s ease-out';
+
+                // 根据门后内容显示不同效果
+                if (doorContents[doorIndex] === 'danger') {
+                    // 危险门：显示恐怖的眼睛
+                    showEye(door);
+                } else {
+                    // 安全门：显示黑暗空洞（什么都没有）
+                    showDarkness(door);
+                }
+
+                // 添加提示文字
+                const hint = document.createElement('div');
+                hint.style.cssText = `
+                    position: fixed;
+                    bottom: 30px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    color: #c4b454;
+                    font-size: 18px;
+                    background: rgba(0,0,0,0.8);
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    z-index: 1000;
+                    animation: fadeIn 0.3s ease-out;
+                `;
+                hint.textContent = '继续注视门可进入';
+                hint.id = 'doorHint';
+
+                // 移除旧提示
+                const oldHint = document.getElementById('doorHint');
+                if (oldHint) oldHint.remove();
+
+                document.body.appendChild(hint);
+
+            } else if (doorStates[doorIndex] === 'half-open') {
+                // 第二次触发：进入门后
+                doorStates[doorIndex] = 'open';
+                console.log('进入门，内容:', doorContents[doorIndex]);
+
+                // 移除提示
+                const hint = document.getElementById('doorHint');
+                if (hint) hint.remove();
+
+                // 门完全打开并放大
+                door.style.transform = 'scale(2) rotateY(-90deg)';
+                door.style.opacity = '0';
+                door.style.transition = 'all 0.8s ease-out';
+
+                // 根据门后内容决定结局
+                setTimeout(() => {
+                    if (doorContents[doorIndex] === 'safe') {
+                        // 安全门：通关
+                        showVictory();
+                    } else {
+                        // 危险门：被怪物吃掉，游戏结束
+                        showGameOver();
+                    }
+                }, 800);
+            }
+        }
         
         // 显示恐怖的眼睛（危险门）
         function showEye(doorElement) {
@@ -759,6 +856,9 @@
                 // 同步更新眼动光标位置
                 gazeCursor.style.left = e.clientX + 'px';
                 gazeCursor.style.top = e.clientY + 'px';
+
+                // 处理停留在门上的逻辑
+                handleDoorGaze(e.clientX, e.clientY);
             }
         });
 
@@ -769,19 +869,22 @@
                 
                 await webgazer.setGazeListener((data, timestamp) => {
                     if (data == null) return;
-                    
+
                     const smoothed = smoothGazeData(data.x, data.y);
                     const gazeX = smoothed.x;
                     const gazeY = smoothed.y;
-                    
+
                     gazeCursor.style.left = gazeX + 'px';
                     gazeCursor.style.top = gazeY + 'px';
 
                     updateViewMask(gazeX, gazeY);
-                    
+
                     targetX = (gazeX / window.innerWidth - 0.5) * 15;
                     targetY = -10 + (gazeY / window.innerHeight - 0.5) * 10;
-                    
+
+                    // 处理停留在门上的逻辑
+                    handleDoorGaze(gazeX, gazeY);
+
                     eyeTrackingEnabled = true;
                     useMouseFallback = false;
                 }).begin();
