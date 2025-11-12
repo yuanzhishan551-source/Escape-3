@@ -122,18 +122,18 @@
             transform: translateZ(500px);
         }
 
-        /* 门容器 - z-index 比遮罩高，确保可点击 */
+        /* 门容器 - 独立于3D场景，使用固定定位确保可点击 */
         .doors-container {
-            position: absolute;
-            width: 100%;
-            height: 100%;
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
             justify-content: center;
             align-items: flex-end;
             gap: 120px;
-            transform: translateZ(501px);
-            padding-bottom: 0px;
             z-index: 1000;
+            pointer-events: none;
         }
 
         /* 门 - z-index 确保在遮罩层之上 */
@@ -324,13 +324,6 @@
         <div class="room-box">
             <!-- 房间的六个面 -->
             <div class="room-face back">
-                <!-- 三扇门 -->
-                <div class="doors-container">
-                    <div class="door" data-door="1"></div>
-                    <div class="door" data-door="2"></div>
-                    <div class="door" data-door="3"></div>
-                </div>
-                
                 <!-- 环境光 -->
                 <div class="ambient-light"></div>
             </div>
@@ -340,6 +333,13 @@
             <div class="room-face right"></div>
             <div class="room-face front"></div>
         </div>
+    </div>
+
+    <!-- 三扇门 - 独立于3D场景之外，确保可点击 -->
+    <div class="doors-container">
+        <div class="door" data-door="1"></div>
+        <div class="door" data-door="2"></div>
+        <div class="door" data-door="3"></div>
     </div>
     
     <!-- 特效 -->
